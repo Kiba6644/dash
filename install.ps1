@@ -372,7 +372,7 @@ function Pv-Main {
             Write-Host "  To apply the plan, run:  provenant setup   (it shows the plan again and asks first)" -ForegroundColor Yellow
         }
         Write-Host ""
-        Write-Host "  Next:  provenant verify   (safe enforcement test)     then   provenant status" -ForegroundColor White
+        Write-Host "  Next:  provenant verify   (safe enforcement test)     then   provenant status (or provenant status --web)" -ForegroundColor White
         Write-Host "  Installed is not the same as protected: status shows Configured, Connected and Verified separately." -ForegroundColor DarkGray
         Write-Host "  If 'provenant' is not recognized, open a new PowerShell window, or run:  `"$($py.Path)`" -m provenant verify" -ForegroundColor DarkGray
         Write-Host ""

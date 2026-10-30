@@ -58,4 +58,4 @@ esac
 step 4 "Protecting your agents"
 printf "\n"
 if [ -t 1 ] && [ -r /dev/tty ]; then "$PV" setup </dev/tty || true; else "$PV" setup --dry-run; fi
-printf "\n  Next: ${B}provenant verify${N}  ${D}(safe enforcement test)${N}   then ${B}provenant status${N}\n\n"
+printf "\n  Next: ${B}provenant verify${N}  ${D}(safe enforcement test)${N}   then ${B}provenant status${N} ${D}(or ${B}provenant status --web${D})${N}\n\n"

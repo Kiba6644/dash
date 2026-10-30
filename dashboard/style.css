@@ -652,3 +652,33 @@ ul.plain li b { color: var(--fg); font-weight: 500; margin-right: 6px; }
 .hero-steps { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 18px; color: var(--muted); font-size: 13px; position: relative; z-index: 2; }
 .hero-steps b { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 4px; border-radius: 50%; border: 1px solid var(--line2); font: 500 11px/1 var(--mono); color: var(--fg); }
 .nav-start span { color: var(--allow); }
+
+.status-floating-pill {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--card2);
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  font: 500 13px/1 var(--ui);
+  color: var(--fg);
+  text-decoration: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.status-floating-pill:hover {
+  transform: translateY(-2px);
+  border-color: var(--allow);
+}
+.status-floating-pill i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--allow);
+  box-shadow: 0 0 10px var(--allow);
+}

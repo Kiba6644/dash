@@ -9,7 +9,7 @@ import sys
 def dashboard(args: list[str]) -> int:
     from . import server
     options = list(args)
-    if "--open" not in options:
+    if "--open" not in options and "--no-open" not in options:
         options.append("--open")
     return server.main(options) or 0
 

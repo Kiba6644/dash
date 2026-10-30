@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security Command Center · Provenant</title>
+<meta name="description" content="Real-time security firewall status, blocked threat feed, alerts, and audit chain verification for AI agents.">
+<meta name="theme-color" content="#0b0b0c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0b0c'/%3E%3Cpath d='M16 5v22' stroke='%235fd6a4' stroke-width='3'/%3E%3Cpath d='M8 10h16M8 22h16' stroke='%23ededee' stroke-width='2.4'/%3E%3C/svg%3E">
+<link rel="preload" href="/vendor/fonts/bricolage-grotesque-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/geist-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/status.css">
+<script src="/status.js" defer></script>
+</head>
+<body>
+
+<!-- Navigation Bar -->
+<header class="nav">
+  <a href="/" class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 5v22"></path>
+      <path d="M8 10h16M8 22h16"></path>
+    </svg>
+    <span>Provenant</span>
+  </a>
+
+  <div class="nav-links">
+    <a href="/status" class="on"><span class="nav-bg"></span><span>Security Status</span></a>
+    <a href="/"><span>Playground</span></a>
+    <a href="/getting-started"><span>Get Started</span></a>
+  </div>
+
+  <div class="nav-actions">
+    <button class="pill" id="live-toggle-btn" title="Toggle live auto-refresh">
+      <span class="pulse-dot" id="pulse-indicator"></span>
+      <span id="live-status-text">LIVE FEED · 2s</span>
+    </button>
+    <button class="btn btn-sm btn-danger" id="quick-simulate-btn" title="Simulate a real attack caught by Provenant">
+      <span>⚡ Simulate Threat</span>
+    </button>
+    <button class="btn btn-sm" id="quick-verify-btn" title="Verify cryptographic audit chain">
+      <span>🔗 Audit Verify</span>
+    </button>
+    <button class="btn btn-sm" id="quick-refresh-btn" title="Refresh data immediately">
+      <span>↻</span>
+    </button>
+  </div>
+</header>
+
+<main class="status-app">
+  <!-- Command Header -->
+  <section class="command-header">
+    <div class="command-title-group">
+      <h1>
+        <span>Security Command Center</span>
+      </h1>
+      <p id="header-subtitle">Real-time deterministic AI firewall · Continuous audit logging & threat interception</p>
+    </div>
+    <div class="command-meta">
+      <span class="meta-badge" id="badge-version">v0.10.0</span>
+      <span class="meta-badge" id="badge-policy">Policy: loading…</span>
+      <span class="meta-badge" id="badge-chain">Audit: checking…</span>
+      <button class="btn btn-sm" id="header-selftest-btn">✓ Run Self-Test</button>
+    </div>
+  </section>
+
+  <!-- KPI Metrics Bar -->
+  <section class="kpi-grid">
+    <div class="kpi-card" id="kpi-inspected-card">
+      <div class="kpi-title">
+        <span>Total Inspected</span>
+        <span>🛡️</span>
+      </div>
+      <div class="kpi-val" id="metric-inspected">0</div>
+      <div class="kpi-sub" id="metric-inspected-sub">Evaluated tool calls</div>
+    </div>
+
+    <div class="kpi-card kpi-deny" id="kpi-blocked-card">
+      <div class="kpi-title">
+        <span>Blocked (DENY)</span>
+        <span>⛔</span>
+      </div>
+      <div class="kpi-val" id="metric-blocked">0</div>
+      <div class="kpi-sub" id="metric-blocked-sub">Malicious actions stopped</div>
+    </div>
+
+    <div class="kpi-card kpi-alert" id="kpi-alerts-card">
+      <div class="kpi-title">
+        <span>Security Alerts</span>
+        <span>⚠️</span>
+      </div>
+      <div class="kpi-val" id="metric-alerts">0</div>
+      <div class="kpi-sub" id="metric-alerts-sub">High-risk & taint events</div>
+    </div>
+
+    <div class="kpi-card kpi-hold" id="kpi-holds-card">
+      <div class="kpi-title">
+        <span>Pending Holds</span>
+        <span>⏳</span>
+      </div>
+      <div class="kpi-val" id="metric-holds">0</div>
+      <div class="kpi-sub" id="metric-holds-sub">Waiting human sign-off</div>
+    </div>
+
+    <div class="kpi-card kpi-allow" id="kpi-allowed-card">
+      <div class="kpi-title">
+        <span>Allowed Calls</span>
+        <span>✓</span>
+      </div>
+      <div class="kpi-val" id="metric-allowed">0</div>
+      <div class="kpi-sub" id="metric-allowed-sub">Granted single-use tokens</div>
+    </div>
+
+    <div class="kpi-card kpi-audit" id="kpi-audit-card">
+      <div class="kpi-title">
+        <span>Audit Integrity</span>
+        <span>🔒</span>
+      </div>
+      <div class="kpi-val" id="metric-audit">Intact</div>
+      <div class="kpi-sub" id="metric-audit-sub">Cryptographic chain OK</div>
+    </div>
+  </section>
+
+  <!-- Protection Layers & Configured Clients -->
+  <section class="grid-two">
+    <div class="panel">
+      <div class="panel-title">
+        <span>Protection Pipeline</span>
+        <span class="meta-badge" id="pipeline-level">Level: Installed</span>
+      </div>
+      <div class="layer-steps" id="pipeline-steps">
+        <div class="layer-step" id="layer-installed">
+          <div class="layer-icon">📦</div>
+          <div class="layer-name">Installed</div>
+          <div class="layer-status">Package ready</div>
+        </div>
+        <div class="layer-step" id="layer-engine">
+          <div class="layer-icon">⚙️</div>
+          <div class="layer-name">Engine</div>
+          <div class="layer-status">Policy valid</div>
+        </div>
+        <div class="layer-step" id="layer-configured">
+          <div class="layer-icon">🔌</div>
+          <div class="layer-name">Configured</div>
+          <div class="layer-status">Clients mapped</div>
+        </div>
+        <div class="layer-step" id="layer-connected">
+          <div class="layer-icon">⚡</div>
+          <div class="layer-name">Connected</div>
+          <div class="layer-status">Traffic flowing</div>
+        </div>
+        <div class="layer-step" id="layer-verified">
+          <div class="layer-icon">🛡️</div>
+          <div class="layer-name">Verified</div>
+          <div class="layer-status">Self-test passed</div>
+        </div>
+      </div>
+      <div style="background: var(--bg2); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); font-size: 13px;">
+        <div style="font-weight: 600; margin-bottom: 4px;" id="pipeline-summary">Loading protection status…</div>
+        <div style="color: var(--muted); font-size: 12px;" id="pipeline-next">Next: proven enforcement via <code>provenant verify</code></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        <span>Configured Clients & Hook</span>
+        <button class="btn btn-sm" id="btn-open-guide" onclick="location.href='/getting-started'">Setup Guide →</button>
+      </div>
+      <div class="clients-list" id="clients-list-container">
+        <!-- Client cards rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Blocked Items & Alerts Explorer -->
+  <section class="explorer-section">
+    <div class="explorer-toolbar">
+      <div class="tabs" id="filter-tabs">
+        <button class="tab-btn active" data-tab="all">All Events <span class="tab-count" id="count-all">0</span></button>
+        <button class="tab-btn" data-tab="blocked">Blocked (DENY) <span class="tab-count" id="count-blocked">0</span></button>
+        <button class="tab-btn" data-tab="alerts">Security Alerts <span class="tab-count" id="count-alerts">0</span></button>
+        <button class="tab-btn" data-tab="pending">Approvals Queue <span class="tab-count" id="count-pending">0</span></button>
+        <button class="tab-btn" data-tab="allowed">Allowed Calls <span class="tab-count" id="count-allowed">0</span></button>
+      </div>
+
+      <div class="explorer-filters">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="filter-search" placeholder="Filter tool, session, keyword, reason…">
+        </div>
+
+        <select class="category-select" id="filter-category">
+          <option value="all">All Categories</option>
+          <option value="prompt_injection">Prompt Injection</option>
+          <option value="secret_leak">Secret / DLP Leak</option>
+          <option value="egress_ssrf">SSRF & Egress</option>
+          <option value="directory_traversal">Directory Traversal</option>
+          <option value="destructive_command">Destructive Command</option>
+          <option value="unauthorized_tool">Unauthorized Tool</option>
+          <option value="policy_violation">Policy Violation</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Feed Container -->
+    <div id="feed-container">
+      <!-- Table or empty state rendered by JS -->
+    </div>
+  </section>
+</main>
+
+<!-- Inspect Modal -->
+<div class="modal-overlay" id="inspect-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">
+        <h2 id="inspect-title">Event Inspection</h2>
+        <p id="inspect-meta">Seq #0 · 2026-10-31T00:00:00Z</p>
+      </div>
+      <button class="modal-close" id="modal-close-btn">&times;</button>
+    </div>
+
+    <!-- Cryptographic Proof Box -->
+    <div class="crypto-box">
+      <h4>🔒 Cryptographic Audit Chain Verification</h4>
+      <div style="margin-bottom: 4px;"><strong>SHA-256 Entry Hash:</strong> <span id="inspect-hash" class="mono">loading…</span></div>
+      <div><strong>Chain Status:</strong> <span id="inspect-chain-status" style="color: var(--allow);">Mathematically linked to previous record</span></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+      <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+        <div style="font-size: 11px; color: var(--dim); text-transform: uppercase;">Decision & Reasons</div>
+        <div style="font-weight: 600; font-size: 14px; margin: 4px 0;" id="inspect-verdict">DENY</div>
+        <div style="font-size: 12px; color: var(--muted);" id="inspect-reasons">None</div>
+      </div>
+      <div style="background: var(--bg2); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+        <div style="font-size: 11px; color: var(--dim); text-transform: uppercase;">Session & Client</div>
+        <div style="font-weight: 600; font-size: 14px; margin: 4px 0;" id="inspect-source">claude-code</div>
+        <div style="font-size: 12px; color: var(--muted); font-family: var(--mono);" id="inspect-session">session_id</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 8px; font-weight: 600; font-size: 13px;">Masked Tool Arguments:</div>
+    <pre class="json-view" id="inspect-args-json">{}</pre>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+      <button class="btn btn-sm" id="inspect-copy-btn">📋 Copy JSON</button>
+      <button class="btn btn-sm btn-primary" id="inspect-close-action-btn">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notifications Container -->
+<div class="toast-container" id="toast-container"></div>
+
+</body>
+</html>

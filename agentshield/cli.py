@@ -262,6 +262,7 @@ def cmd_status() -> int:
                  yellow(f"{s['pending']} waiting  ") + dim("provenant approve") if s["pending"] else "nothing waiting", 18))
     print(ui.row(dim(SYM["dot"]), "State", dim(ui.short_path(s["home"])), 18))
     print()
+    print("  " + dim("Tip: Launch live security & alerts dashboard: ") + cyan("provenant status --web") + "\n")
     return 0 if a["ok"] and not s["policy_error"] else 1
 
 
@@ -725,8 +726,8 @@ def _help() -> str:
         ui.section("Get protected"),
         f"    {c('provenant setup')}find your AI clients, show the plan, ask, then protect them",
         f"    {c('provenant verify')}safe enforcement test: allow, block, hold, audit",
-        f"    {c('provenant status [--json]')}installed / configured / connected / verified",
-        f"    {c('provenant dashboard')}open the local security command center",
+        f"    {c('provenant status [--json|--web]')}installed / configured / connected / verified (or --web)",
+        f"    {c('provenant dashboard [--status]')}open the local security command center",
         f"    {c('provenant test [--json]')}run safe enforcement, environment and audit checks",
         f"    {c('provenant update [--check]')}upgrade from PyPI or check available versions",
         f"    {c('provenant doctor [--json]')}diagnose Python, PATH, configs, policy, audit, model",
@@ -758,7 +759,12 @@ def _help() -> str:
 
 
 def _opt(rest: list[str], name: str, default=None):
-    return rest[rest.index(name) + 1] if name in rest and rest.index(name) + 1 < len(rest) else default
+    for i, a in enumerate(rest):
+        if a == name and i + 1 < len(rest):
+            return rest[i + 1]
+        if a.startswith(name + "="):
+            return a.split("=", 1)[1]
+    return default
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -792,6 +798,16 @@ def main(argv: list[str] | None = None) -> int:
         if "--json" in rest:
             print(json.dumps(status_full(), indent=2))
             return 0
+        if any(f in rest for f in ("--web", "-w", "--ui", "--dashboard")):
+            from . import server
+            port = int(_opt(rest, "--port", 8765))
+            no_open = "--no-open" in rest
+            server_args = ["--port", str(port), "--status"]
+            if not no_open:
+                server_args.append("--open")
+            else:
+                server_args.append("--no-open")
+            return server.main(server_args) or 0
         return cmd_status()
     if cmd == "doctor":
         return cmd_doctor("--json" in rest)
