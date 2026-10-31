@@ -818,18 +818,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--status", action="store_true", help="open directly to status & alerts dashboard")
     ap.add_argument("--path", default=None, help="initial path to open")
     args = ap.parse_args(argv)
-    ap = argparse.ArgumentParser(description="Provenant dashboard")
-    ap.add_argument("--host", default="127.0.0.1")
-    ap.add_argument("--port", type=int, default=8765)
-    ap.add_argument("--open", action="store_true", help="open the dashboard in the default browser")
-<<<<<<< HEAD
-    ap.add_argument("--no-open", action="store_true", help="do not open the browser")
-    ap.add_argument("--status", action="store_true", help="open directly to status & alerts dashboard")
-    ap.add_argument("--path", default=None, help="initial path to open")
-    args = ap.parse_args(list(sys.argv[1:] if argv is None else argv))
-=======
-    args = ap.parse_args(argv)
->>>>>>> upstream/main
     httpd = serve(args.host, args.port)
     initial_path = "/status" if args.status else (args.path or "/")
     if not initial_path.startswith("/"):
