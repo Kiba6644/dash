@@ -1,15 +1,15 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.5",
- "serialNumber": "urn:uuid:0d995d99-6e06-4124-a5b8-24632a97ba17",
+ "serialNumber": "urn:uuid:52aca2ed-2e0c-469b-9bd3-d6f640730d9f",
  "version": 1,
  "metadata": {
-  "timestamp": "2026-10-30T20:35:52Z",
+  "timestamp": "2026-10-30T21:35:24Z",
   "component": {
    "type": "application",
    "name": "provenant-agent-shield",
-   "version": "0.10.0",
-   "purl": "pkg:pypi/provenant-agent-shield@0.10.0",
+   "version": "0.10.1",
+   "purl": "pkg:pypi/provenant-agent-shield@0.10.1",
    "externalReferences": [
     {
      "type": "vcs",
@@ -21,28 +21,28 @@
  "components": [
   {
    "type": "file",
-   "name": "provenant_agent_shield-0.10.0-py3-none-any.whl",
+   "name": "provenant_agent_shield-0.10.1-py3-none-any.whl",
    "hashes": [
     {
      "alg": "SHA-256",
-     "content": "269d4d6117528bd5fb2c8036144f956891ecafd16090d9ee2cb3855f80a82e1d"
+     "content": "201ae347eb8c03050a8dbab4a0dafbd64425e58ea05c880dba709956a7239ca1"
     }
    ]
   },
   {
    "type": "file",
-   "name": "provenant_agent_shield-0.10.0.tar.gz",
+   "name": "provenant_agent_shield-0.10.1.tar.gz",
    "hashes": [
     {
      "alg": "SHA-256",
-     "content": "3009cf568fc259dab3047431aa24981f639d356e03860a84a424a8ed873b4c0a"
+     "content": "8a80a7008068fa87f94e74c5cd288dc9a010e8448717562fff78e09852b9f6bd"
     }
    ]
   }
  ],
  "dependencies": [
   {
-   "ref": "pkg:pypi/provenant-agent-shield@0.10.0",
+   "ref": "pkg:pypi/provenant-agent-shield@0.10.1",
    "dependsOn": []
   }
  ],
