@@ -1,11 +1,4 @@
-<<<<<<< HEAD
-f2dcaf88c93c7b6f5ac8cd4ae65964c5f2466ff90e3118b248f09165bcdde500  provenance.json
-201ae347eb8c03050a8dbab4a0dafbd64425e58ea05c880dba709956a7239ca1  provenant_agent_shield-0.10.1-py3-none-any.whl
-8a80a7008068fa87f94e74c5cd288dc9a010e8448717562fff78e09852b9f6bd  provenant_agent_shield-0.10.1.tar.gz
-49ac75f7182a586f0e9da287e53d230102bc4ec3ad5aa22f6db16320e00551a5  sbom.cdx.json
-=======
-3ec8b4a5d3edfa3c30030ae22d37a6daf92a312c19a78492b297fdd3b48276e3  provenance.json
-5b3fe6077060927c1bf81ba627f15edbd6a4c5411deec20e7b9e309a0b084aba  provenant_agent_shield-0.10.0-py3-none-any.whl
-90dbb3f6fcf04b10a324f8c878acde0b063aef1b5b0ab9cff05f51ae53b74606  provenant_agent_shield-0.10.0.tar.gz
-db349f9b94d84370bcac5d196b15c5b352231910e7796cb272df4117c99c99e6  sbom.cdx.json
->>>>>>> origin/main
+12d76fd0ae2507f3f74cdc6a964812875eae175e3ee1789c2e80d454a6d53926  provenance.json
+d9c05aa82011580238db56770a7e7bc5b6ecf44657e3a64e14bc20e0e791d127  provenant_agent_shield-0.10.1-py3-none-any.whl
+4bea675f05b89af3b3ba21279ccbff90e778264bfdd8b327626b3390bb57fe0c  provenant_agent_shield-0.10.1.tar.gz
+67de4b6594fc4b16c3b65bba6d80bc4b1dfdeb70e4a1672838512d3d83d94a59  sbom.cdx.json

@@ -13,10 +13,10 @@
 
 <<<<<<< HEAD
 $PvVersion = '0.10.1'                # kept equal to pyproject.toml by tests/test_installer.py
-$PvWheelSha256 = '201ae347eb8c03050a8dbab4a0dafbd64425e58ea05c880dba709956a7239ca1'   # rewritten by scripts/build_release.py
+$PvWheelSha256 = 'd9c05aa82011580238db56770a7e7bc5b6ecf44657e3a64e14bc20e0e791d127'   # rewritten by scripts/build_release.py
 =======
-$PvVersion = '0.10.0'                # kept equal to pyproject.toml by tests/test_installer.py
-$PvWheelSha256 = '5b3fe6077060927c1bf81ba627f15edbd6a4c5411deec20e7b9e309a0b084aba'   # rewritten by scripts/build_release.py
+$PvVersion = '0.10.1'                # kept equal to pyproject.toml by tests/test_installer.py
+$PvWheelSha256 = 'd9c05aa82011580238db56770a7e7bc5b6ecf44657e3a64e14bc20e0e791d127'   # rewritten by scripts/build_release.py
 >>>>>>> origin/main
 $PvMinCode = 31000                  # Python 3.10.0 as major*10000 + minor*100 + micro
 $PvProbeCode = 'import sys; print(sys.executable); print(sys.version_info[0] * 10000 + sys.version_info[1] * 100 + sys.version_info[2]); print(int(sys.prefix != sys.base_prefix))'
