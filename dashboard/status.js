@@ -13,7 +13,9 @@
     timerId: null,
     seenSeqs: new Set(),
     firstLoad: true,
-    selectedItem: null
+    selectedItem: null,
+    mailSamples: [],
+    lastMailReport: null
   };
 
   // DOM Elements
@@ -48,10 +50,29 @@
     clientsListContainer: document.getElementById('clients-list-container'),
     filterTabs: document.getElementById('filter-tabs'),
     countAll: document.getElementById('count-all'),
+    countEmail: document.getElementById('count-email'),
     countBlocked: document.getElementById('count-blocked'),
     countAlerts: document.getElementById('count-alerts'),
     countPending: document.getElementById('count-pending'),
     countAllowed: document.getElementById('count-allowed'),
+
+    // Email Inspector Elements
+    mailSender: document.getElementById('mail-sender') || document.getElementById('mail-from'),
+    mailReplyTo: document.getElementById('mail-reply-to'),
+    mailSubject: document.getElementById('mail-subject'),
+    mailBody: document.getElementById('mail-body'),
+    btnScanMail: document.getElementById('btn-scan-mail'),
+    btnResetMail: document.getElementById('btn-reset-mail'),
+    btnToggleInspector: document.getElementById('btn-toggle-inspector'),
+    inspectorContentBody: document.getElementById('inspector-content-body'),
+    pipelineStatusBadge: document.getElementById('pipeline-status-badge'),
+    scanResultCard: document.getElementById('scan-result-card'),
+    resVerdictTag: document.getElementById('res-verdict-tag'),
+    resDomainTag: document.getElementById('res-domain-tag'),
+    resRiskScore: document.getElementById('res-risk-score'),
+    resRiskFill: document.getElementById('res-risk-fill'),
+    resIndicatorsList: document.getElementById('res-indicators-list'),
+    btnViewMailAudit: document.getElementById('btn-view-mail-audit'),
 
     filterSearch: document.getElementById('filter-search'),
     filterCategory: document.getElementById('filter-category'),
@@ -96,8 +117,31 @@
     }
   }
 
+  // Synthetic Alert Chime via Web Audio API (zero audio file dependencies)
+  function playAlertChime() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch {
+      // AudioContext unavailable or autoplay blocked
+    }
+  }
+
   // Show Toast Notification
   function showToast(title, message, type = 'allow') {
+    if (!el.toastContainer) return;
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     const icon = type === 'deny' ? '⛔' : (type === 'alert' ? '⚠️' : '✓');
@@ -125,22 +169,24 @@
       handleSummaryUpdate(data);
     } catch (err) {
       console.warn('Failed to fetch status summary:', err);
-      el.badgeChain.textContent = 'Connection Error';
-      el.badgeChain.style.color = 'var(--deny)';
+      if (el.badgeChain) {
+        el.badgeChain.textContent = 'Connection Error';
+        el.badgeChain.style.color = 'var(--deny)';
+      }
     }
   }
 
   // Handle data update
   function handleSummaryUpdate(data) {
-    const prevSummary = state.summary;
     state.summary = data;
 
-    // Detect new blocked items or alerts to trigger notification toasts
+    // Detect new blocked items or alerts to trigger notification toasts and audio chimes
     if (!state.firstLoad && data.blocked) {
       data.blocked.forEach(item => {
         const key = `blocked-${item.seq}-${item.call_id}`;
         if (!state.seenSeqs.has(key)) {
           state.seenSeqs.add(key);
+          playAlertChime();
           showToast(`Threat Blocked: ${item.tool}`, item.args_summary || (item.reasons && item.reasons[0]) || 'Attack intercepted by Provenant', 'deny');
         }
       });
@@ -149,6 +195,7 @@
           const key = `alert-${item.id}`;
           if (!state.seenSeqs.has(key)) {
             state.seenSeqs.add(key);
+            playAlertChime();
             showToast(`Security Alert: ${item.title}`, item.details, 'alert');
           }
         });
@@ -168,25 +215,27 @@
     if (!data) return;
 
     // Header Badges
-    if (data.version) el.badgeVersion.textContent = `v${data.version}`;
-    if (data.policy) {
+    if (data.version && el.badgeVersion) el.badgeVersion.textContent = `v${data.version}`;
+    if (data.policy && el.badgePolicy) {
       el.badgePolicy.textContent = data.policy.error ? 'Policy Error' : `Policy: ${data.policy.version}`;
       el.badgePolicy.style.color = data.policy.error ? 'var(--deny)' : 'var(--fg)';
     }
-    if (data.audit) {
+    if (data.audit && el.badgeChain) {
       el.badgeChain.textContent = data.audit.ok ? `Audit Chain Intact (${data.audit.checked})` : `Audit BROKEN (#${data.audit.first_bad_seq})`;
       el.badgeChain.style.color = data.audit.ok ? 'var(--allow)' : 'var(--deny)';
     }
 
     // KPI Metrics
     const m = data.metrics || {};
-    el.metricInspected.textContent = (m.total_evaluated || 0).toLocaleString();
-    el.metricBlocked.textContent = (m.total_blocked || 0).toLocaleString();
-    el.metricAlerts.textContent = (m.total_alerts || (data.alerts ? data.alerts.length : 0)).toLocaleString();
-    el.metricHolds.textContent = (m.pending_count || (data.pending ? data.pending.length : 0)).toLocaleString();
-    el.metricAllowed.textContent = (m.total_allowed || 0).toLocaleString();
-    el.metricAudit.textContent = data.audit && data.audit.ok ? 'Intact' : 'TAMPERED';
-    el.metricAudit.style.color = data.audit && data.audit.ok ? '#38bdf8' : 'var(--deny)';
+    if (el.metricInspected) el.metricInspected.textContent = (m.total_evaluated || 0).toLocaleString();
+    if (el.metricBlocked) el.metricBlocked.textContent = (m.total_blocked || 0).toLocaleString();
+    if (el.metricAlerts) el.metricAlerts.textContent = (m.total_alerts || (data.alerts ? data.alerts.length : 0)).toLocaleString();
+    if (el.metricHolds) el.metricHolds.textContent = (m.pending_count || (data.pending ? data.pending.length : 0)).toLocaleString();
+    if (el.metricAllowed) el.metricAllowed.textContent = (m.total_allowed || 0).toLocaleString();
+    if (el.metricAudit) {
+      el.metricAudit.textContent = data.audit && data.audit.ok ? 'Intact' : 'TAMPERED';
+      el.metricAudit.style.color = data.audit && data.audit.ok ? '#38bdf8' : 'var(--deny)';
+    }
 
     // Tab counts
     const blockedCount = (data.blocked || []).length;
@@ -195,18 +244,21 @@
     const allEventsCount = (data.recent_events || []).length;
     const allowedCount = (data.recent_events || []).filter(e => e.decision === 'ALLOW').length;
 
-    el.countAll.textContent = allEventsCount;
-    el.countBlocked.textContent = blockedCount;
-    el.countAlerts.textContent = alertsCount;
-    el.countPending.textContent = pendingCount;
-    el.countAllowed.textContent = allowedCount;
+    const emailThreatsCount = (data.recent_events || []).filter(e => e.category === 'email_threat' || e.tool === 'mail_security').length;
+
+    if (el.countAll) el.countAll.textContent = allEventsCount;
+    if (el.countEmail) el.countEmail.textContent = emailThreatsCount;
+    if (el.countBlocked) el.countBlocked.textContent = blockedCount;
+    if (el.countAlerts) el.countAlerts.textContent = alertsCount;
+    if (el.countPending) el.countPending.textContent = pendingCount;
+    if (el.countAllowed) el.countAllowed.textContent = allowedCount;
 
     // Pipeline Steps
     const p = data.protection || {};
     const layers = p.layers || {};
-    el.pipelineLevel.textContent = `Level: ${(p.level || 'installed').toUpperCase()}`;
-    el.pipelineSummary.textContent = p.summary || 'Protection is active.';
-    el.pipelineNext.textContent = p.next ? `Next: ${p.next}` : 'Everything configured and verified.';
+    if (el.pipelineLevel) el.pipelineLevel.textContent = `Level: ${(p.level || 'installed').toUpperCase()}`;
+    if (el.pipelineSummary) el.pipelineSummary.textContent = p.summary || 'Protection is active.';
+    if (el.pipelineNext) el.pipelineNext.textContent = p.next ? `Next: ${p.next}` : 'Everything configured and verified.';
 
     ['installed', 'engine', 'configured', 'connected', 'verified'].forEach(layer => {
       const stepEl = el[`layer${layer.charAt(0).toUpperCase() + layer.slice(1)}`];
@@ -225,6 +277,7 @@
 
   // Render Clients Cards
   function renderClients(clients, hookInstalled) {
+    if (!el.clientsListContainer) return;
     let html = '';
     const clientLabels = {
       'claude-desktop': 'Claude Desktop',
@@ -254,7 +307,6 @@
       `;
     });
 
-    // Claude Code Hook row
     html += `
       <div class="client-item">
         <div class="client-info">
@@ -273,12 +325,19 @@
   // Render Explorer Feed
   function renderFeed() {
     const data = state.summary;
-    if (!data) return;
+    if (!data || !el.feedContainer) return;
 
     let items = [];
     const tab = state.activeTab;
 
-    if (tab === 'blocked') {
+    if (tab === 'email_threats') {
+      items = (data.recent_events || []).filter(e => e.category === 'email_threat' || e.tool === 'mail_security').map(e => ({
+        ...e,
+        badgeType: e.decision === 'DENY' ? 'deny' : (e.decision === 'HOLD' ? 'hold' : 'allow'),
+        badgeText: e.decision === 'DENY' ? 'BLOCKED EMAIL' : (e.decision === 'HOLD' ? 'HELD EMAIL' : 'SCANNED EMAIL'),
+        rawObj: e
+      }));
+    } else if (tab === 'blocked') {
       items = (data.blocked || []).map(b => ({
         ...b,
         badgeType: 'deny',
@@ -308,7 +367,6 @@
         rawObj: e
       }));
     } else {
-      // All Events
       items = (data.recent_events || []).map(e => {
         let bType = 'allow';
         let bText = e.decision || 'EVENT';
@@ -397,7 +455,6 @@
       </table>
     `;
 
-    // Attach click listeners to inspect buttons & rows
     el.feedContainer.querySelectorAll('.inspect-btn').forEach(btn => {
       btn.addEventListener('click', (ev) => {
         ev.stopPropagation();
@@ -428,6 +485,163 @@
     `;
     const btn = document.getElementById('empty-simulate-btn');
     if (btn) btn.addEventListener('click', () => simulateAttack());
+  }
+
+  // Load Mail Samples from API
+  async function loadMailSamples() {
+    try {
+      const res = await fetch('/api/mail/samples');
+      if (!res.ok) return;
+      const data = await res.json();
+      state.mailSamples = data.samples || [];
+
+      // If initially ms365_phish chip is active, populate it
+      onSelectSample('ms365_phish');
+    } catch (e) {
+      console.warn('Failed to load email attack samples:', e);
+    }
+  }
+
+  // Select Sample Email
+  function onSelectSample(id) {
+    const s = state.mailSamples.find(x => x.id === id);
+    if (!s) return;
+    if (el.mailSender) el.mailSender.value = s.from || '';
+    if (el.mailReplyTo) el.mailReplyTo.value = s.reply_to || '';
+    if (el.mailSubject) el.mailSubject.value = s.subject || '';
+    if (el.mailBody) el.mailBody.value = s.body || '';
+  }
+
+  // Execute Email Scan & Live Pipeline Animation
+  async function scanMail() {
+    const fromVal = el.mailSender ? el.mailSender.value.trim() : '';
+    const replyToVal = el.mailReplyTo ? el.mailReplyTo.value.trim() : '';
+    const subjectVal = el.mailSubject ? el.mailSubject.value.trim() : '';
+    const bodyVal = el.mailBody ? el.mailBody.value.trim() : '';
+
+    if (!bodyVal && !fromVal) {
+      showToast('Input Required', 'Please provide an email body or select a sample attack.', 'alert');
+      return;
+    }
+
+    if (el.btnScanMail) el.btnScanMail.disabled = true;
+    if (el.pipelineStatusBadge) {
+      el.pipelineStatusBadge.textContent = 'Scanning in Progress…';
+      el.pipelineStatusBadge.className = 'pipeline-status-badge running';
+    }
+
+    const setStep = (num, stateText, cls = '') => {
+      const stateEl = document.getElementById(`pipe-state-${num}`);
+      const stepEl = document.getElementById(`pipe-step-${num}`);
+      if (stateEl) stateEl.textContent = stateText;
+      if (stepEl) stepEl.className = `pipe-step ${cls}`.trim();
+    };
+
+    setStep(1, 'Running…', 'active');
+    setStep(2, 'Waiting…', '');
+    setStep(3, 'Waiting…', '');
+    setStep(4, 'Waiting…', '');
+
+    try {
+      await new Promise(r => setTimeout(r, 180));
+      setStep(1, 'Completed', 'done');
+      setStep(2, 'Analyzing…', 'active');
+
+      const res = await fetch('/api/mail/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: fromVal,
+          reply_to: replyToVal,
+          subject: subjectVal,
+          raw: bodyVal
+        })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const rep = data.report || {};
+      state.lastMailReport = rep;
+
+      await new Promise(r => setTimeout(r, 200));
+      setStep(2, `Score: ${rep.risk_score || 0}/10`, (rep.verdict === 'high' || rep.risk_score >= 5) ? 'done alert' : 'done');
+
+      setStep(3, 'Taint Flagged', 'done');
+      await new Promise(r => setTimeout(r, 180));
+
+      const isHigh = (rep.verdict === 'high' || (rep.risk_score || 0) >= 5);
+      setStep(4, isHigh ? 'Desktop & Toast Alert Fired' : 'Advisory Logged', isHigh ? 'done alert' : 'done');
+
+      if (el.pipelineStatusBadge) {
+        el.pipelineStatusBadge.textContent = isHigh ? 'THREAT INTERCEPTED' : 'EVALUATION COMPLETE';
+        el.pipelineStatusBadge.className = isHigh ? 'pipeline-status-badge threat' : 'pipeline-status-badge safe';
+      }
+
+      // Display Scan Result Card
+      if (el.scanResultCard) el.scanResultCard.style.display = 'block';
+      if (el.resVerdictTag) {
+        el.resVerdictTag.textContent = `${(rep.verdict || 'low').toUpperCase()} RISK`;
+        el.resVerdictTag.className = `verdict-tag ${rep.verdict || 'low'}`;
+      }
+      if (el.resDomainTag) el.resDomainTag.textContent = rep.sender_domain || 'external.com';
+      if (el.resRiskScore) el.resRiskScore.textContent = `${rep.risk_score || 0}/10`;
+      if (el.resRiskFill) {
+        const pct = Math.min(100, Math.max(10, (rep.risk_score || 0) * 10));
+        el.resRiskFill.style.width = `${pct}%`;
+        el.resRiskFill.style.background = isHigh ? 'var(--deny)' : (rep.verdict === 'medium' ? 'var(--hold)' : 'var(--allow)');
+      }
+
+      // Render Indicator Badges
+      if (el.resIndicatorsList) {
+        let indHtml = '';
+        (rep.reasons || []).forEach(r => {
+          const detail = typeof r === 'string' ? r : (r.detail || r.code || JSON.stringify(r));
+          indHtml += `<span class="indicator-pill">${escapeHtml(detail)}</span>`;
+        });
+        if (!indHtml) indHtml = '<span class="indicator-pill safe">No malicious heuristics flagged</span>';
+        el.resIndicatorsList.innerHTML = indHtml;
+      }
+
+      // Trigger Audio Chime & Toast if high risk
+      if (isHigh) {
+        playAlertChime();
+        showToast(`🚨 High-Risk Email Intercepted!`, `From: ${rep.sender_domain} · Score: ${rep.risk_score}/10`, 'deny');
+      } else {
+        showToast('Email Scanned', `Verdict: ${rep.verdict || 'low'} (Score: ${rep.risk_score || 0})`, 'allow');
+      }
+
+      // Immediately refresh the live summary feed
+      await fetchSummary();
+
+    } catch (err) {
+      showToast('Scan Failed', err.message, 'alert');
+      if (el.pipelineStatusBadge) {
+        el.pipelineStatusBadge.textContent = 'Scan Error';
+        el.pipelineStatusBadge.className = 'pipeline-status-badge threat';
+      }
+    } finally {
+      if (el.btnScanMail) el.btnScanMail.disabled = false;
+    }
+  }
+
+  // Reset Mail Form
+  function resetMailForm() {
+    if (el.mailSender) el.mailSender.value = '';
+    if (el.mailReplyTo) el.mailReplyTo.value = '';
+    if (el.mailSubject) el.mailSubject.value = '';
+    if (el.mailBody) el.mailBody.value = '';
+    if (el.scanResultCard) el.scanResultCard.style.display = 'none';
+    if (el.pipelineStatusBadge) {
+      el.pipelineStatusBadge.textContent = 'Ready for Scan';
+      el.pipelineStatusBadge.className = 'pipeline-status-badge';
+    }
+    for (let i = 1; i <= 4; i++) {
+      const stateEl = document.getElementById(`pipe-state-${i}`);
+      const stepEl = document.getElementById(`pipe-step-${i}`);
+      if (stateEl) stateEl.textContent = 'Idle';
+      if (stepEl) stepEl.className = 'pipe-step';
+    }
+    state.lastMailReport = null;
   }
 
   // Simulate Attack API
@@ -492,99 +706,160 @@
     if (!item) return;
     state.selectedItem = item;
 
-    el.inspectTitle.textContent = `${item.tool || 'Event'} Inspection`;
-    el.inspectMeta.textContent = `Sequence #${item.seq || 0} · ${item.ts || 'Timestamp not logged'}`;
-    el.inspectHash.textContent = item.hash || (state.summary && state.summary.audit && state.summary.audit.head_hash) || '0000000000000000';
-    el.inspectVerdict.textContent = item.badgeText || item.decision || 'DENY';
-    el.inspectVerdict.style.color = (item.badgeType === 'deny' || item.badgeType === 'critical') ? 'var(--deny)' : 'var(--allow)';
+    if (el.inspectTitle) el.inspectTitle.textContent = `${item.tool || 'Event'} Inspection`;
+    if (el.inspectMeta) el.inspectMeta.textContent = `Sequence #${item.seq || 0} · ${item.ts || 'Timestamp not logged'}`;
+    if (el.inspectHash) el.inspectHash.textContent = item.hash || (state.summary && state.summary.audit && state.summary.audit.head_hash) || '0000000000000000';
+    if (el.inspectVerdict) {
+      el.inspectVerdict.textContent = item.badgeText || item.decision || 'DENY';
+      el.inspectVerdict.style.color = (item.badgeType === 'deny' || item.badgeType === 'critical') ? 'var(--deny)' : 'var(--allow)';
+    }
 
     const reasons = Array.isArray(item.reasons) ? item.reasons.join('\n• ') : (item.details || 'None');
-    el.inspectReasons.textContent = reasons ? `• ${reasons}` : 'Rule evaluation allowed this request';
-    el.inspectSource.textContent = item.source || 'client-tool';
-    el.inspectSession.textContent = item.session_id || 'no-session';
+    if (el.inspectReasons) el.inspectReasons.textContent = reasons ? `• ${reasons}` : 'Rule evaluation allowed this request';
+    if (el.inspectSource) el.inspectSource.textContent = item.source || 'client-tool';
+    if (el.inspectSession) el.inspectSession.textContent = item.session_id || 'no-session';
 
     const fullPayload = item.args || item.rawObj || {};
-    el.inspectArgsJson.textContent = JSON.stringify(fullPayload, null, 2);
+    if (el.inspectArgsJson) el.inspectArgsJson.textContent = JSON.stringify(fullPayload, null, 2);
 
-    el.inspectModal.classList.add('open');
+    if (el.inspectModal) el.inspectModal.classList.add('open');
   }
 
   // Close Inspect Modal
   function closeInspect() {
-    el.inspectModal.classList.remove('open');
+    if (el.inspectModal) el.inspectModal.classList.remove('open');
     state.selectedItem = null;
   }
 
   // Setup Event Listeners
   function setupEvents() {
     // Live Polling Toggle
-    el.liveToggleBtn.addEventListener('click', () => {
-      state.isPolling = !state.isPolling;
-      if (state.isPolling) {
-        el.pulseIndicator.classList.remove('paused');
-        el.liveStatusText.textContent = 'LIVE FEED · 2s';
-        startPolling();
-        showToast('Live Polling Resumed', 'Checking every 2 seconds', 'allow');
-      } else {
-        el.pulseIndicator.classList.add('paused');
-        el.liveStatusText.textContent = 'POLLING PAUSED';
-        stopPolling();
-        showToast('Live Polling Paused', 'Click to resume auto-refresh', 'hold');
-      }
-    });
+    if (el.liveToggleBtn) {
+      el.liveToggleBtn.addEventListener('click', () => {
+        state.isPolling = !state.isPolling;
+        if (state.isPolling) {
+          if (el.pulseIndicator) el.pulseIndicator.classList.remove('paused');
+          if (el.liveStatusText) el.liveStatusText.textContent = 'LIVE FEED · 2s';
+          startPolling();
+          showToast('Live Polling Resumed', 'Checking every 2 seconds', 'allow');
+        } else {
+          if (el.pulseIndicator) el.pulseIndicator.classList.add('paused');
+          if (el.liveStatusText) el.liveStatusText.textContent = 'POLLING PAUSED';
+          stopPolling();
+          showToast('Live Polling Paused', 'Click to resume auto-refresh', 'hold');
+        }
+      });
+    }
 
     // Quick Actions
-    el.quickSimulateBtn.addEventListener('click', () => simulateAttack());
-    el.headerSelfTestBtn.addEventListener('click', () => runSelfTest());
-    el.quickVerifyBtn.addEventListener('click', () => verifyChain());
-    el.quickRefreshBtn.addEventListener('click', () => {
+    if (el.quickSimulateBtn) el.quickSimulateBtn.addEventListener('click', () => simulateAttack());
+    if (el.headerSelfTestBtn) el.headerSelfTestBtn.addEventListener('click', () => runSelfTest());
+    if (el.quickVerifyBtn) el.quickVerifyBtn.addEventListener('click', () => verifyChain());
+    if (el.quickRefreshBtn) el.quickRefreshBtn.addEventListener('click', () => {
       fetchSummary();
       showToast('Dashboard Refreshed', 'Latest data loaded from firewall', 'allow');
     });
 
-    // Tabs
-    el.filterTabs.querySelectorAll('.tab-btn').forEach(btn => {
+    // Scenario Chips (ms365_phish, prompt_injection, ceo_wire, benign_meeting, custom)
+    document.querySelectorAll('.chip-btn[data-sample]').forEach(btn => {
       btn.addEventListener('click', () => {
-        el.filterTabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.chip-btn[data-sample]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        state.activeTab = btn.getAttribute('data-tab');
-        renderFeed();
+        const sampleId = btn.getAttribute('data-sample');
+        if (sampleId === 'custom') {
+          resetMailForm();
+        } else {
+          onSelectSample(sampleId);
+        }
       });
     });
 
-    // Filters
-    el.filterSearch.addEventListener('input', (e) => {
-      state.searchQuery = e.target.value;
-      renderFeed();
-    });
+    // Collapse / Expand Inspector
+    if (el.btnToggleInspector && el.inspectorContentBody) {
+      el.btnToggleInspector.addEventListener('click', () => {
+        const isHidden = el.inspectorContentBody.style.display === 'none';
+        el.inspectorContentBody.style.display = isHidden ? 'block' : 'none';
+        el.btnToggleInspector.textContent = isHidden ? 'Collapse Inspector ▴' : 'Expand Inspector ▾';
+      });
+    }
 
-    el.filterCategory.addEventListener('change', (e) => {
-      state.activeCategory = e.target.value;
-      renderFeed();
-    });
+    if (el.btnScanMail) {
+      el.btnScanMail.addEventListener('click', () => scanMail());
+    }
+    if (el.btnResetMail) {
+      el.btnResetMail.addEventListener('click', () => resetMailForm());
+    }
+    if (el.btnViewMailAudit) {
+      el.btnViewMailAudit.addEventListener('click', () => {
+        if (state.lastMailReport) {
+          openInspect({
+            tool: 'mail_security',
+            seq: 'latest',
+            ts: new Date().toISOString(),
+            decision: state.lastMailReport.verdict === 'high' ? 'DENY' : 'HOLD',
+            badgeText: `${(state.lastMailReport.verdict || 'high').toUpperCase()} THREAT`,
+            badgeType: state.lastMailReport.verdict === 'high' ? 'deny' : 'hold',
+            reasons: (state.lastMailReport.reasons || []).map(r => r.detail || r.code || String(r)),
+            source: 'mail_scanner',
+            session_id: 'mail-eval',
+            args: state.lastMailReport
+          });
+        }
+      });
+    }
+
+    // Tabs
+    if (el.filterTabs) {
+      el.filterTabs.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          el.filterTabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.activeTab = btn.getAttribute('data-tab');
+          renderFeed();
+        });
+      });
+    }
+
+    // Filters
+    if (el.filterSearch) {
+      el.filterSearch.addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        renderFeed();
+      });
+    }
+    if (el.filterCategory) {
+      el.filterCategory.addEventListener('change', (e) => {
+        state.activeCategory = e.target.value;
+        renderFeed();
+      });
+    }
 
     // Modal close
-    el.modalCloseBtn.addEventListener('click', closeInspect);
-    el.inspectCloseActionBtn.addEventListener('click', closeInspect);
-    el.inspectModal.addEventListener('click', (e) => {
-      if (e.target === el.inspectModal) closeInspect();
-    });
+    if (el.modalCloseBtn) el.modalCloseBtn.addEventListener('click', closeInspect);
+    if (el.inspectCloseActionBtn) el.inspectCloseActionBtn.addEventListener('click', closeInspect);
+    if (el.inspectModal) {
+      el.inspectModal.addEventListener('click', (e) => {
+        if (e.target === el.inspectModal) closeInspect();
+      });
+    }
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && el.inspectModal.classList.contains('open')) {
+      if (e.key === 'Escape' && el.inspectModal && el.inspectModal.classList.contains('open')) {
         closeInspect();
       }
     });
 
     // Copy JSON button
-    el.inspectCopyBtn.addEventListener('click', () => {
-      const text = el.inspectArgsJson.textContent;
-      navigator.clipboard.writeText(text).then(() => {
-        showToast('Copied to Clipboard', 'JSON event payload copied', 'allow');
-      }).catch(() => {
-        showToast('Copy Failed', 'Unable to access clipboard', 'alert');
+    if (el.inspectCopyBtn) {
+      el.inspectCopyBtn.addEventListener('click', () => {
+        const text = el.inspectArgsJson.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Copied to Clipboard', 'JSON event payload copied', 'allow');
+        }).catch(() => {
+          showToast('Copy Failed', 'Unable to access clipboard', 'alert');
+        });
       });
-    });
+    }
   }
 
   // Polling loop
@@ -603,6 +878,7 @@
   // Initialization
   function init() {
     setupEvents();
+    loadMailSamples();
     fetchSummary();
     startPolling();
   }

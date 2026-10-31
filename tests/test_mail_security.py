@@ -69,5 +69,39 @@ class MailSecurityTests(unittest.TestCase):
                 mail._request("GET", "/executions/x", "secret-key")
 
 
+    def test_dispatch_alert_medium_and_high_risk_desktop_notification(self):
+        mail._SEEN.clear()
+        events = []
+        verdict = {
+            "verdict": "high",
+            "fingerprint": "fp-12345",
+            "sender_domain": "phish.example",
+            "subject": "Reset Password",
+            "risk_score": 6,
+            "reasons": [{"code": "urgency", "detail": "Immediate action required"}]
+        }
+        with patch.object(mail, "send_desktop_notification") as mock_notify:
+            dispatched = mail.dispatch_alert(verdict, tool="test_tool", session_id="test_s", audit=lambda e, d: events.append((e, d)))
+            self.assertTrue(dispatched)
+            self.assertTrue(mock_notify.called)
+            self.assertEqual(events[0][0], "mail_alert_dispatched")
+            self.assertEqual(events[0][1]["sender_domain"], "phish.example")
+
+    def test_dispatch_alert_ignores_low_risk(self):
+        mail._SEEN.clear()
+        verdict = {
+            "verdict": "low",
+            "fingerprint": "fp-clean",
+            "sender_domain": "clean.example",
+            "subject": "Lunch menu",
+            "risk_score": 0,
+            "reasons": []
+        }
+        with patch.object(mail, "send_desktop_notification") as mock_notify:
+            dispatched = mail.dispatch_alert(verdict)
+            self.assertFalse(dispatched)
+            self.assertFalse(mock_notify.called)
+
+
 if __name__ == "__main__":
     unittest.main()

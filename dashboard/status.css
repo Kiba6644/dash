@@ -740,3 +740,585 @@
   font-size: 12px;
   color: var(--muted);
 }
+
+/* ==========================================================================
+   Email Security & Interactive Threat Inspector Styles
+   ========================================================================== */
+.email-inspector-panel {
+  margin-bottom: 28px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease;
+}
+
+.email-inspector-panel:hover {
+  border-color: rgba(95, 214, 164, 0.35);
+}
+
+.panel-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.panel-title-group h2 {
+  margin: 6px 0 4px;
+  font: 700 20px/1.2 var(--display);
+  letter-spacing: -0.02em;
+}
+
+.panel-title-group p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.panel-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11px/1 var(--mono);
+  text-transform: uppercase;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+
+/* Preset Scenario Chips */
+.scenario-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chip-label {
+  font: 600 11.5px/1 var(--mono);
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+
+.chip-btn {
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font: 500 12.5px/1 var(--ui);
+  color: var(--fg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chip-btn:hover {
+  background: var(--card2);
+  border-color: var(--muted);
+}
+
+.chip-btn.active {
+  background: rgba(95, 214, 164, 0.15);
+  border-color: var(--allow);
+  color: #73e4b5;
+  font-weight: 600;
+}
+
+/* Inspector Grid */
+.inspector-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 20px;
+}
+
+@media (max-width: 960px) {
+  .inspector-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inspector-form {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font: 600 11.5px/1 var(--mono);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.form-input, .form-textarea {
+  background: var(--card);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: 400 13px/1.4 var(--ui);
+  color: var(--fg);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus, .form-textarea:focus {
+  border-color: var(--allow);
+  box-shadow: 0 0 0 1px var(--allow);
+}
+
+.form-textarea {
+  font-family: var(--mono);
+  font-size: 12px;
+  resize: vertical;
+}
+
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.scan-hint {
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+/* Pipeline Result Panel */
+.inspector-result-panel {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pipeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pipeline-header h4 {
+  margin: 0;
+  font: 700 14px/1 var(--display);
+}
+
+.pipeline-status-badge {
+  font: 600 11px/1 var(--mono);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--card2);
+  color: var(--muted);
+  border: 1px solid var(--line2);
+}
+
+.pipeline-status-badge.scanning {
+  background: rgba(252, 211, 77, 0.15);
+  color: var(--inj);
+  border-color: rgba(252, 211, 77, 0.3);
+  animation: pulse-glow 1.2s infinite ease-in-out;
+}
+
+.pipeline-status-badge.danger {
+  background: rgba(255, 122, 107, 0.15);
+  color: var(--deny);
+  border-color: rgba(255, 122, 107, 0.35);
+}
+
+.pipeline-status-badge.safe {
+  background: rgba(95, 214, 164, 0.15);
+  color: var(--allow);
+  border-color: rgba(95, 214, 164, 0.3);
+}
+
+/* Pipeline Tracker Steps */
+.pipeline-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pipe-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: all 0.2s ease;
+}
+
+.pipe-step.running {
+  border-color: var(--inj);
+  background: rgba(252, 211, 77, 0.06);
+}
+
+.pipe-step.completed {
+  border-color: rgba(95, 214, 164, 0.4);
+}
+
+.pipe-step.threat {
+  border-color: rgba(255, 122, 107, 0.5);
+  background: rgba(255, 122, 107, 0.05);
+}
+
+.pipe-icon {
+  font-size: 16px;
+  width: 24px;
+  text-align: center;
+}
+
+.pipe-info {
+  flex: 1;
+}
+
+.pipe-title {
+  font: 600 12.5px/1.2 var(--ui);
+  color: var(--fg);
+}
+
+.pipe-desc {
+  font: 400 11px/1.2 var(--ui);
+  color: var(--dim);
+  margin-top: 2px;
+}
+
+.pipe-state {
+  font: 600 11px/1 var(--mono);
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--bg2);
+  color: var(--dim);
+}
+
+.pipe-step.running .pipe-state {
+  color: var(--inj);
+}
+
+.pipe-step.completed .pipe-state {
+  color: var(--allow);
+}
+
+.pipe-step.threat .pipe-state {
+  color: var(--deny);
+}
+
+/* Scan Result Card */
+.scan-result-card {
+  background: var(--card);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slide-toast 0.25s ease-out;
+}
+
+.result-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.result-verdict-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.verdict-tag {
+  font: 800 12px/1 var(--mono);
+  padding: 5px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}
+
+.verdict-tag.high {
+  background: rgba(255, 122, 107, 0.2);
+  color: var(--deny);
+  border: 1px solid var(--deny);
+}
+
+.verdict-tag.medium {
+  background: rgba(252, 211, 77, 0.2);
+  color: var(--inj);
+  border: 1px solid var(--inj);
+}
+
+.verdict-tag.low {
+  background: rgba(95, 214, 164, 0.2);
+  color: var(--allow);
+  border: 1px solid var(--allow);
+}
+
+.domain-tag {
+  font: 500 12px/1 var(--mono);
+  color: var(--muted);
+  background: var(--bg2);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.risk-meter-box {
+  min-width: 130px;
+}
+
+.meter-label {
+  display: flex;
+  justify-content: space-between;
+  font: 600 11.5px/1 var(--mono);
+  margin-bottom: 4px;
+}
+
+.meter-bar-track {
+  height: 6px;
+  background: var(--bg2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.meter-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+.meter-bar-fill.fill-high {
+  background: linear-gradient(90deg, #fcd34d, var(--deny));
+}
+
+.meter-bar-fill.fill-medium {
+  background: var(--inj);
+}
+
+.meter-bar-fill.fill-low {
+  background: var(--allow);
+}
+
+/* Indicators List */
+.result-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.indicator-pill {
+  font: 500 11px/1.2 var(--mono);
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  color: var(--fg);
+}
+
+.indicator-pill-danger {
+  background: rgba(255, 122, 107, 0.12);
+  border-color: rgba(255, 122, 107, 0.3);
+  color: var(--deny);
+}
+
+.indicator-pill-warn {
+  background: rgba(252, 211, 77, 0.12);
+  border-color: rgba(252, 211, 77, 0.3);
+  color: var(--inj);
+}
+
+.result-audit-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Email Threats Feed Cards */
+.email-threat-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.email-threat-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.email-threat-card:hover {
+  border-color: var(--line2);
+  background: var(--card2);
+}
+
+.email-threat-card.card-critical {
+  border-left: 4px solid var(--deny);
+}
+
+.email-threat-card.card-high {
+  border-left: 4px solid #fb923c;
+}
+
+.email-threat-card.card-medium {
+  border-left: 4px solid var(--inj);
+}
+
+.email-threat-card.card-low {
+  border-left: 4px solid var(--allow);
+}
+
+.email-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.email-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.email-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.email-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.email-sender-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sender-badge {
+  font: 600 11px/1 var(--mono);
+  background: var(--bg2);
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.email-time {
+  font: 400 11.5px/1 var(--mono);
+  color: var(--dim);
+}
+
+.email-subject {
+  margin: 0;
+  font: 700 15px/1.3 var(--display);
+  color: var(--fg);
+}
+
+.email-score-badge {
+  font: 700 11.5px/1 var(--mono);
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.email-score-badge.badge-critical {
+  background: rgba(255, 122, 107, 0.2);
+  color: var(--deny);
+  border: 1px solid var(--deny);
+}
+
+.email-score-badge.badge-high {
+  background: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+  border: 1px solid #fb923c;
+}
+
+.email-score-badge.badge-medium {
+  background: rgba(252, 211, 77, 0.2);
+  color: var(--inj);
+  border: 1px solid var(--inj);
+}
+
+.email-score-badge.badge-low {
+  background: rgba(95, 214, 164, 0.2);
+  color: var(--allow);
+  border: 1px solid var(--allow);
+}
+
+.email-card-body {
+  margin-bottom: 12px;
+}
+
+.risk-meter-container {
+  margin-bottom: 10px;
+}
+
+.email-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.email-details-text {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.email-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.email-seq {
+  font: 500 11.5px/1 var(--mono);
+  color: var(--dim);
+}

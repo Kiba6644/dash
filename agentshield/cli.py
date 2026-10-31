@@ -448,6 +448,10 @@ class _Feed:
         if ev in ("manifest_withheld", "manifest_refused"):
             what = ", ".join(sorted(d.get("withheld", {}))) or d.get("tool", "")
             return f"  {dim(t)} {ui.badge('DENY')} {bold('manifest')}  tool definition changed or poisoned: {what}"
+        if ev == "mail_threat":
+            return f"  {dim(t)} {ui.badge('ALERT')} {bold('mail_threat')}  {d.get('verdict', '').upper()} risk from {d.get('sender_domain')}: {d.get('subject', '')[:60]}"
+        if ev == "mail_alert_dispatched":
+            return f"  {dim(t)} {ui.badge('ALERT')} {bold('mail_alert')}  dispatched alert for {d.get('sender_domain')}: {d.get('subject', '')[:60]}"
         if ev == "proxy_start":
             return f"  {dim(t)} {dim('  ' + SYM['arrow'] + ' proxy up for')} {bold(str(d.get('server')))}"
         return None
@@ -751,7 +755,7 @@ def _help() -> str:
         f"    {c('provenant call APPROVAL_ID')}phone the human about one held call",
         f"    {c('provenant pins reset [server]')}re-approve tool definitions after an upgrade",
         f"    {c('provenant model status|test')}optional model-assisted risk labels (off by default)",
-        f"    {c('provenant mail setup|status|test')}scan MCP email results; configure Bolna phone alerts",
+        f"    {c('provenant mail scan|status|setup|test')}scan emails for threats; desktop and phone alerts",
         f"    {c('provenant mail enable|disable')}turn high-risk email phone alerts on or off",
         "",
         "  " + dim("Docs: https://github.com/MithunSidhaarth/provenant/blob/main/docs/REAL_GUARD.md"),

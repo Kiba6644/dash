@@ -173,11 +173,147 @@
     </div>
   </section>
 
+  <!-- Interactive Email Threat Inspector & Simulator -->
+  <section class="panel email-inspector-panel" id="email-inspector-section">
+    <div class="panel-header-row">
+      <div class="panel-title-group">
+        <div class="panel-badge-pill">✉️ Agent Email Defense</div>
+        <h2>Interactive Email Threat Inspector</h2>
+        <p>Test real-time phishing interception, brand spoofing defenses, and indirect prompt injection analysis.</p>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-sm" id="btn-toggle-inspector">Collapse Inspector ▴</button>
+      </div>
+    </div>
+
+    <div class="inspector-content" id="inspector-content-body">
+      <!-- Preset Attack Selector Buttons -->
+      <div class="scenario-chips-row">
+        <span class="chip-label">Pre-crafted Scenarios:</span>
+        <button class="chip-btn active" data-sample="ms365_phish">🏢 Microsoft Phishing</button>
+        <button class="chip-btn" data-sample="prompt_injection">💉 Prompt Injection Resume</button>
+        <button class="chip-btn" data-sample="ceo_wire">💼 CEO Wire Transfer</button>
+        <button class="chip-btn" data-sample="benign_meeting">🟢 Benign Meeting Invite</button>
+        <button class="chip-btn" data-sample="custom">✏️ Custom Email</button>
+      </div>
+
+      <div class="inspector-grid">
+        <!-- Input Form -->
+        <div class="inspector-form">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="mail-sender">From / Sender Address</label>
+              <input type="text" id="mail-sender" class="form-input" placeholder="e.g. security-alerts@msft-verify.com">
+            </div>
+            <div class="form-group flex-1">
+              <label for="mail-reply-to">Reply-To (Optional)</label>
+              <input type="text" id="mail-reply-to" class="form-input" placeholder="e.g. reply@external.com">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="mail-subject">Email Subject</label>
+            <input type="text" id="mail-subject" class="form-input" placeholder="e.g. URGENT: Account Suspension Notice">
+          </div>
+
+          <div class="form-group">
+            <label for="mail-body">Email Body / Payload (Instructions, Links, Content)</label>
+            <textarea id="mail-body" class="form-textarea" rows="4" placeholder="Paste incoming email body or raw headers..."></textarea>
+          </div>
+
+          <div class="form-footer">
+            <button class="btn btn-primary" id="btn-scan-mail">
+              <span class="btn-icon">⚡</span>
+              <span>Scan Email &amp; Test Pipeline</span>
+            </button>
+            <span class="scan-hint" id="scan-hint-text">Simulates MCP Gmail/Mail tool output ingestion</span>
+          </div>
+        </div>
+
+        <!-- Pipeline Progression & Live Result -->
+        <div class="inspector-result-panel" id="inspector-result-panel">
+          <div class="pipeline-header">
+            <h4>Live Defense Pipeline</h4>
+            <span class="pipeline-status-badge" id="pipeline-status-badge">Ready for Scan</span>
+          </div>
+
+          <!-- 4 Pipeline Progression Steps -->
+          <div class="pipeline-tracker" id="pipeline-tracker">
+            <div class="pipe-step" id="pipe-step-1">
+              <div class="pipe-icon">🔍</div>
+              <div class="pipe-info">
+                <div class="pipe-title">1. Normalization &amp; Parsing</div>
+                <div class="pipe-desc">RFC822 header extraction, sender parsing, HTML unescaping</div>
+              </div>
+              <div class="pipe-state" id="pipe-state-1">Idle</div>
+            </div>
+
+            <div class="pipe-step" id="pipe-step-2">
+              <div class="pipe-icon">🛡️</div>
+              <div class="pipe-info">
+                <div class="pipe-title">2. Threat Heuristics &amp; Injections</div>
+                <div class="pipe-desc">Brand mismatch, credential harvest, URL shorteners, prompt injection</div>
+              </div>
+              <div class="pipe-state" id="pipe-state-2">Idle</div>
+            </div>
+
+            <div class="pipe-step" id="pipe-step-3">
+              <div class="pipe-icon">🧪</div>
+              <div class="pipe-info">
+                <div class="pipe-title">3. Session Taint Tracking</div>
+                <div class="pipe-desc">Flagging agent context as tainted to block downstream file/network exfil</div>
+              </div>
+              <div class="pipe-state" id="pipe-state-3">Idle</div>
+            </div>
+
+            <div class="pipe-step" id="pipe-step-4">
+              <div class="pipe-icon">📢</div>
+              <div class="pipe-info">
+                <div class="pipe-title">4. Multi-Channel Alert Dispatch</div>
+                <div class="pipe-desc">Desktop notification, Web Audio chime, audit log verification link</div>
+              </div>
+              <div class="pipe-state" id="pipe-state-4">Idle</div>
+            </div>
+          </div>
+
+          <!-- Output Score & Report Card -->
+          <div class="scan-result-card" id="scan-result-card" style="display: none;">
+            <div class="result-top">
+              <div class="result-verdict-group">
+                <span class="verdict-tag" id="res-verdict-tag">HIGH RISK</span>
+                <span class="domain-tag" id="res-domain-tag">msft-verify.com</span>
+              </div>
+              <div class="risk-meter-box">
+                <div class="meter-label">
+                  <span>Risk Score:</span>
+                  <strong id="res-risk-score">10/10</strong>
+                </div>
+                <div class="meter-bar-track">
+                  <div class="meter-bar-fill" id="res-risk-fill" style="width: 100%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="result-indicators" id="res-indicators-list">
+              <!-- Indicator tags rendered here -->
+            </div>
+
+            <div class="result-audit-link">
+              <span>🔒 Cryptographic Audit Entry Recorded</span>
+              <button class="btn btn-sm" id="btn-view-mail-audit">Inspect Audit Record →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Interactive Blocked Items & Alerts Explorer -->
   <section class="explorer-section">
     <div class="explorer-toolbar">
       <div class="tabs" id="filter-tabs">
         <button class="tab-btn active" data-tab="all">All Events <span class="tab-count" id="count-all">0</span></button>
+        <button class="tab-btn" data-tab="email_threats">✉️ Email Threats <span class="tab-count" id="count-email">0</span></button>
         <button class="tab-btn" data-tab="blocked">Blocked (DENY) <span class="tab-count" id="count-blocked">0</span></button>
         <button class="tab-btn" data-tab="alerts">Security Alerts <span class="tab-count" id="count-alerts">0</span></button>
         <button class="tab-btn" data-tab="pending">Approvals Queue <span class="tab-count" id="count-pending">0</span></button>
@@ -192,6 +328,7 @@
 
         <select class="category-select" id="filter-category">
           <option value="all">All Categories</option>
+          <option value="email_threat">Email Threats</option>
           <option value="prompt_injection">Prompt Injection</option>
           <option value="secret_leak">Secret / DLP Leak</option>
           <option value="egress_ssrf">SSRF & Egress</option>

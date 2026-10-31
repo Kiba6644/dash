@@ -7,8 +7,10 @@ Phone alerts contain only a minimal summary, never the message body or links.
 from __future__ import annotations
 import base64, getpass, hashlib, html, json, os, re, sys, threading, urllib.error, urllib.parse, urllib.request
 from email.utils import parseaddr
+from pathlib import Path
 from typing import Any, Callable
 from .detectors import scan_injection
+from .notify import send_desktop_notification
 
 API = "https://api.bolna.ai"
 _URL_RE = re.compile(r"https?://[^\s<>\"'()\]]+", re.I)
@@ -265,26 +267,71 @@ def _alert_task(verdict: dict[str, Any]) -> str:
         "Do not ask them to approve any action. Do not read links or message body aloud. Ask them to review the email in their mail app. Keep the call under 45 seconds.")
 
 
+def dispatch_alert(verdict: dict[str, Any], tool: str = "mail", session_id: str = "default",
+                   audit: Callable[[str, dict], Any] | None = None, dedupe: bool = True) -> bool:
+    """Multi-channel alert dispatch for high or medium risk emails.
+
+    Fires a native desktop notification and, if configured, an asynchronous Bolna phone alert.
+    Optionally records 'mail_alert_dispatched' in the audit chain.
+    """
+    if verdict.get("verdict") not in ("high", "medium"):
+        return False
+
+    fp = verdict.get("fingerprint") or ""
+    if dedupe and fp:
+        with _SEEN_LOCK:
+            if fp in _SEEN:
+                return False
+            _SEEN.add(fp)
+            if len(_SEEN) > 5000:
+                _SEEN.clear()
+                _SEEN.add(fp)
+
+    domain = verdict.get("sender_domain", "unknown")
+    subject = verdict.get("subject") or "(no subject)"
+    v_level = verdict.get("verdict", "high")
+    reasons = "; ".join(item.get("detail", "") for item in verdict.get("reasons", []))
+    title = f"[Provenant Alert] {'High-Risk' if v_level == 'high' else 'Suspicious'} Email from {domain}"
+    msg = f"{subject}\nSignals: {reasons}" if reasons else subject
+    severity = "CRITICAL" if v_level == "high" else "HIGH"
+
+    send_desktop_notification(title, msg, severity=severity)
+
+    phone_dispatched = False
+    if _user_env("PROVENANT_MAIL_CALLS_ENABLED") == "1" and _user_env("BOLNA_API_KEY") and _user_env("CALL_ME_PHONE"):
+        phone_dispatched = True
+        def alert(v=verdict):
+            try:
+                send_phone_alert(_alert_task(v))
+            except Exception as exc:
+                if audit:
+                    audit("mail_phone_alert_failed", {"fingerprint": v.get("fingerprint", ""), "error": type(exc).__name__})
+        threading.Thread(target=alert, name="provenant-mail-alert", daemon=True).start()
+
+    if audit:
+        audit("mail_alert_dispatched", {
+            "tool": tool[:100],
+            "session_id": session_id[:100],
+            "fingerprint": fp,
+            "verdict": verdict.get("verdict"),
+            "risk_score": verdict.get("risk_score"),
+            "sender_domain": domain,
+            "subject": subject,
+            "phone_dispatched": phone_dispatched,
+        })
+    return True
+
+
 def process_result(result: Any, server: str, tool: str, audit: Callable[[str, dict], Any] | None = None) -> list[dict[str, Any]]:
     reports = []
     for mail in extract_emails(result):
-        report = analyse_email(mail); reports.append(report)
+        report = analyse_email(mail)
+        reports.append(report)
         if audit:
             audit("mail_scan", {"server": server[:100], "tool": tool[:100], "fingerprint": report["fingerprint"],
                 "risk_score": report["risk_score"], "verdict": report["verdict"], "sender_domain": report["sender_domain"],
                 "subject": report["subject"], "reason_codes": [r["code"] for r in report["reasons"]]})
-        if report["verdict"] != "high": continue
-        with _SEEN_LOCK:
-            fp = report["fingerprint"]
-            if fp in _SEEN: continue
-            _SEEN.add(fp)
-            if len(_SEEN) > 5000: _SEEN.clear(); _SEEN.add(fp)
-        if not (_user_env("PROVENANT_MAIL_CALLS_ENABLED") == "1" and _user_env("BOLNA_API_KEY") and _user_env("CALL_ME_PHONE")): continue
-        def alert(v=report):
-            try: send_phone_alert(_alert_task(v))
-            except Exception as exc:
-                if audit: audit("mail_phone_alert_failed", {"fingerprint": v["fingerprint"], "error": type(exc).__name__})
-        threading.Thread(target=alert, name="provenant-mail-alert", daemon=True).start()
+        dispatch_alert(report, tool=tool, session_id=server, audit=audit)
     return reports
 
 
@@ -330,24 +377,119 @@ def status() -> int:
     return 0
 
 
-def test_call() -> int:
-    if not (sys.stdin and sys.stdin.isatty()):
-        print("  Refusing to place a real phone call without an interactive terminal."); return 2
-    if _user_env("PROVENANT_MAIL_CALLS_ENABLED") != "1":
-        print("  Run 'provenant mail setup' first."); return 2
-    if input("  This places a real call and may use Bolna credits. Continue? [y/N] ").strip().lower() not in {"y", "yes"}:
-        print("  Cancelled; no call placed."); return 1
-    try: result = send_phone_alert("This is a test call from Provenant Mail Security. No email was flagged. Confirm the phone integration is working, then end the call.")
+def scan_cli(target: str) -> int:
+    """Scan a file or raw text/JSON string for email threats and print findings."""
+    content: Any = target
+    p = Path(target)
+    if p.exists() and p.is_file():
+        try:
+            raw = p.read_text(encoding="utf-8")
+        except Exception:
+            raw = p.read_text(encoding="utf-8", errors="replace")
+        try:
+            content = json.loads(raw)
+        except Exception:
+            content = raw
+    elif target.strip().startswith(("{", "[")):
+        try:
+            content = json.loads(target)
+        except Exception:
+            content = target
+
+    emails = extract_emails(content)
+    if not emails:
+        text = target if isinstance(content, str) else str(content)
+        emails = [{"id": "cli-scan", "sender": "unknown@external", "reply_to": "", "subject": "(no subject)", "body": text, "headers": ""}]
+
+    reports = []
+    has_threat = False
+    for mail in emails:
+        report = analyse_email(mail)
+        reports.append(report)
+        print(f"\nEmail Scan Result: {report['verdict'].upper()} (Risk Score: {report['risk_score']})")
+        print(f"  Sender Domain: {report['sender_domain']}")
+        print(f"  Subject:       {report['subject']}")
+        if report["reasons"]:
+            print("  Signals:")
+            for r in report["reasons"]:
+                print(f"    - [{r['code']}] {r['detail']}")
+        else:
+            print("  Signals: None (Clean)")
+
+        if report["verdict"] in ("high", "medium"):
+            has_threat = True
+            dispatch_alert(report, tool="mail_scan", session_id="cli", dedupe=False)
+            print(f"  Alert dispatched for {report['verdict']}-risk email.")
+
+    print("\n" + json.dumps(reports if len(reports) > 1 else reports[0], indent=2))
+    return 1 if has_threat else 0
+
+
+def test_alert(args: list[str] | None = None) -> int:
+    args = args or []
+    print("  Testing Provenant Mail Security alerts...\n")
+
+    # 1. Desktop Notification
+    desktop_ok = send_desktop_notification(
+        "[Provenant Test Alert] Mail Security Alert Test",
+        "This is a test notification verifying that the desktop alert channel is working.",
+        severity="HIGH",
+        sync=True
+    )
+    if desktop_ok:
+        print("  [OK] Desktop notification dispatched.")
+    else:
+        print("  [WARN] Desktop notification fallback to console (native notifier unavailable).")
+
+    # 2. Phone Alert (Bolna)
+    calls_enabled = _user_env("PROVENANT_MAIL_CALLS_ENABLED") == "1"
+    key = _user_env("BOLNA_API_KEY")
+    phone = _user_env("CALL_ME_PHONE")
+
+    if not (calls_enabled and key and phone):
+        print("  [INFO] Phone alerts are not enabled/configured (run 'provenant mail setup' to configure Bolna).")
+        return 0
+
+    if "--skip-phone" in args:
+        print("  [INFO] Phone alert test skipped via --skip-phone.")
+        return 0
+
+    is_interactive = bool(sys.stdin and sys.stdin.isatty())
+    force = "--phone" in args or os.environ.get("PROVENANT_TEST_FORCE_CALL") == "1"
+
+    if not is_interactive and not force:
+        print("  [INFO] Phone test skipped: non-interactive terminal (pass --phone to force).")
+        return 0
+
+    if not force:
+        if input("  This places a real call and may use Bolna credits. Continue? [y/N] ").strip().lower() not in {"y", "yes"}:
+            print("  Cancelled phone test; no call placed.")
+            return 0
+
+    try:
+        result = send_phone_alert("This is a test call from Provenant Mail Security. No email was flagged. Confirm the phone integration is working, then end the call.")
+        print("  [OK] Phone call initiated:")
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("ok") else 1
     except Exception as exc:
-        print(f"  Phone test failed: {exc}"); return 1
-    print(json.dumps(result, indent=2)); return 0 if result.get("ok") else 1
+        print(f"  [ERROR] Phone test failed: {exc}")
+        return 1
+
+
+def test_call(args: list[str] | None = None) -> int:
+    return test_alert(args)
 
 
 def main(rest: list[str]) -> int:
     sub = rest[0] if rest else "status"
     if sub == "setup": return setup()
     if sub == "status": return status()
-    if sub == "test": return test_call()
+    if sub == "test": return test_alert(rest[1:])
+    if sub == "scan":
+        if len(rest) < 2:
+            print("  usage: provenant mail scan <file-or-text>")
+            return 2
+        return scan_cli(rest[1])
     if sub in {"disable", "off"}:
         try: _set_user_env("PROVENANT_MAIL_CALLS_ENABLED", "0")
         except RuntimeError as exc: print(f"  {exc}"); return 2
@@ -357,4 +499,4 @@ def main(rest: list[str]) -> int:
             print("  Run 'provenant mail setup' first."); return 2
         _set_user_env("PROVENANT_MAIL_CALLS_ENABLED", "1")
         print("  Phone alerts enabled for high-risk mail."); return 0
-    print("  usage: provenant mail setup|status|test|enable|disable"); return 2
+    print("  usage: provenant mail scan|setup|status|test|enable|disable"); return 2

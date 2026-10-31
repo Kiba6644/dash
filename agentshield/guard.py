@@ -384,12 +384,13 @@ class Store:
 
     def load_session(self, sid: str) -> dict:
         return self.db.load_session(sid, {"session_id": sid, "user_texts": [], "untrusted_texts": [],
-                                          "injection_flags": [], "call_count": 0, "mode": self.mode})
+                                          "injection_flags": [], "threat_flags": [], "call_count": 0, "mode": self.mode})
 
     def save_session(self, s: dict) -> None:
         s["untrusted_texts"] = s["untrusted_texts"][-200:]
         s["user_texts"] = s["user_texts"][-50:]
         s["injection_flags"] = s["injection_flags"][-50:]
+        s["threat_flags"] = s.get("threat_flags", [])[-50:]
         self.db.save_session(s["session_id"], self.mode, s)
 
     def approvals(self) -> dict:
@@ -664,10 +665,11 @@ class GuardPolicy:
         return []
 
     def _injection_context(self, call, session, cat) -> list[Finding]:
-        if cat in SIDE_EFFECTS and session.get("injection_flags"):
+        flags = session.get("injection_flags") or session.get("threat_flags")
+        if cat in SIDE_EFFECTS and flags:
             return [Finding("injection_context", APPROVE,
                             "this session has read content containing prompt-injection indicators; side effects need a human",
-                            {"indicators": session["injection_flags"][:3]})]
+                            {"indicators": flags[:3]})]
         return []
 
 
@@ -905,9 +907,52 @@ class Guard:
             if f["label"] not in seen:
                 seen.add(f["label"])
                 flags.append({**f, "source": tool})
+
+        # Scan for email threats
+        try:
+            from . import mail_security
+            emails = mail_security.extract_emails(output)
+            for mail in emails:
+                report = mail_security.analyse_email(mail)
+                self.audit.append("mail_scan", sid, {
+                    "tool": tool, "fingerprint": report["fingerprint"],
+                    "risk_score": report["risk_score"], "verdict": report["verdict"],
+                    "sender_domain": report["sender_domain"], "subject": report["subject"],
+                    "reason_codes": [r["code"] for r in report["reasons"]]
+                })
+                if report["verdict"] in ("high", "medium"):
+                    self.audit.append("mail_threat", sid, {
+                        "tool": tool, "fingerprint": report["fingerprint"],
+                        "risk_score": report["risk_score"], "verdict": report["verdict"],
+                        "sender_domain": report["sender_domain"], "subject": report["subject"],
+                        "reasons": report["reasons"]
+                    })
+                    flag_label = "email_phishing" if any(
+                        r["code"] in ("credential_or_payment_language", "brand_domain_mismatch", "prompt_injection")
+                        for r in report["reasons"]
+                    ) else "email_threat"
+                    flag = {
+                        "label": flag_label,
+                        "verdict": report["verdict"],
+                        "risk_score": report["risk_score"],
+                        "sender_domain": report["sender_domain"],
+                        "sender": mail.get("sender", report["sender_domain"]),
+                        "subject": report["subject"],
+                        "reasons": [r["detail"] for r in report["reasons"]],
+                        "source": tool
+                    }
+                    flags.append(flag)
+                    mail_security.dispatch_alert(
+                        report, tool=tool, session_id=sid,
+                        audit=lambda ev, data: self.audit.append(ev, sid, data)
+                    )
+        except Exception:
+            pass
+
         s = self.store.load_session(sid)
         s["untrusted_texts"] += [v[:20000] for v in vs]
         s["injection_flags"] += flags
+        s.setdefault("threat_flags", []).extend([f for f in flags if f.get("label") in ("email_phishing", "email_threat")])
         self.store.save_session(s)
         self.audit.append("tool_result", sid, {"tool": tool, "trust": "untrusted", "chars": len(text),
                                                "mode": self.mode, "source": ("claude-code" if sid.startswith("cc:") else "mcp"), "injection_indicators": flags})
